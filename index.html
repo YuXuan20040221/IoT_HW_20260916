@@ -287,6 +287,20 @@
       cursor: default;
     }
 
+    .cell.revealed.has-number {
+      cursor: pointer;
+    }
+
+    .cell.revealed.has-number:hover {
+      background: #e2e8f0;
+      filter: brightness(0.96);
+    }
+
+    .cell.highlight-pulse {
+      background: #fed7aa !important;
+      transition: background-color 0.15s;
+    }
+
     .cell.mine-hit {
       background: #ef4444 !important;
       color: #ffffff;
@@ -420,6 +434,7 @@
       </button>
       <div class="tips-text">
         💡 操作提示：點擊滑鼠左鍵翻開方格，點擊滑鼠右鍵（或開啟「插旗模式」）插旗標記地雷。<br>
+        ⚡ <b>快速展開功能</b>：當某個數字周圍的旗子數量已標齊，<b>按一下該數字</b>即可一鍵展開周圍所有安全方格！<br>
         首點絕對安全，不會第一下就踩到地雷！
       </div>
     </div>
@@ -644,11 +659,81 @@
       }
     }
 
+    // 取得相鄰九宮格格子
+    function getNeighbors(r, c) {
+      const neighbors = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            neighbors.push(grid[nr][nc]);
+          }
+        }
+      }
+      return neighbors;
+    }
+
+    // 快速展開 (Chording)：當周圍已標記旗子數等於該格數字時，按一下數字自動翻開其餘安全格
+    function handleChord(cell) {
+      const neighbors = getNeighbors(cell.r, cell.c);
+      let flagCount = 0;
+      for (const n of neighbors) {
+        if (n.isFlagged) flagCount++;
+      }
+
+      // 如果周圍標記的旗子數恰好等於該格子的地雷數
+      if (flagCount === cell.neighborMines) {
+        let hitMine = false;
+        let detonatedCell = null;
+
+        // 檢查是否有未插旗的相鄰格其實是地雷（玩家標錯旗的情況）
+        for (const n of neighbors) {
+          if (!n.isFlagged && !n.isRevealed) {
+            if (n.isMine) {
+              hitMine = true;
+              detonatedCell = n;
+            }
+          }
+        }
+
+        if (hitMine) {
+          triggerGameOver(detonatedCell);
+          return;
+        }
+
+        // 全數安全，一鍵翻開其餘相鄰格
+        for (const n of neighbors) {
+          if (!n.isFlagged && !n.isRevealed) {
+            revealCell(n.r, n.c);
+          }
+        }
+        checkWinCondition();
+      } else {
+        // 若周圍旗子數尚未滿足，給周圍未開方格短暫波紋提示
+        for (const n of neighbors) {
+          if (!n.isRevealed && !n.isFlagged) {
+            n.el.classList.add('highlight-pulse');
+            setTimeout(() => n.el.classList.remove('highlight-pulse'), 180);
+          }
+        }
+      }
+    }
+
     // 處理格子點擊
     function handleCellClick(r, c) {
       if (gameOver || gameWon) return;
 
       const cell = grid[r][c];
+
+      // 若點擊的是已經翻開且有數字的格子 -> 觸發「快速展開」功能 (Chording)
+      if (cell.isRevealed) {
+        if (cell.neighborMines > 0) {
+          handleChord(cell);
+        }
+        return;
+      }
 
       // 若開啟了插旗模式，點擊直接視為插旗
       if (flagMode) {
@@ -656,7 +741,7 @@
         return;
       }
 
-      if (cell.isFlagged || cell.isRevealed) return;
+      if (cell.isFlagged) return;
 
       // 首次點擊處理
       if (!gameStarted) {
@@ -687,6 +772,8 @@
       if (cell.neighborMines > 0) {
         cell.el.textContent = cell.neighborMines;
         cell.el.classList.add(`c-${cell.neighborMines}`);
+        cell.el.classList.add('has-number');
+        cell.el.title = `點擊可快速展開周圍安全格（需已標記 ${cell.neighborMines} 面旗）`;
       } else {
         cell.el.textContent = '';
         // 遞迴翻開周圍 8 格
