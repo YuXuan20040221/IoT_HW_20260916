@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>森林小狐狸時鐘作業 - 陳渝媗</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+      background: linear-gradient(to bottom, #dbeafe 0%, #fed7aa 55%, #fef3c7 70%);
+      color: #1e293b;
+    }
+
+    /* 森林背景層 */
+    .forest-world {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    /* 太陽與光暈 */
+    .sun {
+      position: absolute;
+      top: 36px;
+      right: 12%;
+      width: 90px;
+      height: 90px;
+      background: radial-gradient(circle, #fff7ed 30%, #fed7aa 60%, rgba(254, 215, 170, 0) 80%);
+      border-radius: 50%;
+      box-shadow: 0 0 50px rgba(254, 215, 170, 0.7);
+      animation: pulseSun 6s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulseSun {
+      0% { transform: scale(0.96); opacity: 0.9; }
+      100% { transform: scale(1.08); opacity: 1; }
+    }
+
+    /* 雲朵 */
+    .cloud {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.75);
+      border-radius: 50px;
+      filter: blur(1px);
+    }
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+    .cloud-1 {
+      top: 80px;
+      left: -120px;
+      width: 140px;
+      height: 42px;
+      animation: driftCloud 38s linear infinite;
+    }
+    .cloud-1::before {
+      width: 55px;
+      height: 55px;
+      top: -24px;
+      left: 20px;
+    }
+    .cloud-1::after {
+      width: 42px;
+      height: 42px;
+      top: -16px;
+      left: 65px;
+    }
+
+    .cloud-2 {
+      top: 140px;
+      left: -200px;
+      width: 190px;
+      height: 50px;
+      opacity: 0.85;
+      animation: driftCloud 55s linear infinite 12s;
+    }
+    .cloud-2::before {
+      width: 70px;
+      height: 70px;
+      top: -30px;
+      left: 30px;
+    }
+    .cloud-2::after {
+      width: 50px;
+      height: 50px;
+      top: -18px;
+      left: 90px;
+    }
+
+    @keyframes driftCloud {
+      0% { transform: translateX(-220px); }
+      100% { transform: translateX(calc(100vw + 300px)); }
+    }
+
+    /* 遠山 */
+    .mountains {
+      position: absolute;
+      bottom: 110px;
+      width: 100%;
+      height: 260px;
+      pointer-events: none;
+    }
+
+    /* 樹林層疊 (SVG 背景) */
+    .trees-layer-back {
+      position: absolute;
+      bottom: 90px;
+      width: 100%;
+      height: 180px;
+      opacity: 0.65;
+    }
+    .trees-layer-mid {
+      position: absolute;
+      bottom: 70px;
+      width: 100%;
+      height: 160px;
+      opacity: 0.85;
+    }
+
+    /* 草地地面 */
+    .ground {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100px;
+      background: linear-gradient(to bottom, #4ade80 0%, #22c55e 35%, #15803d 100%);
+      border-top: 6px solid #86efac;
+      box-shadow: inset 0 6px 12px rgba(0, 0, 0, 0.08);
+      z-index: 5;
+    }
+
+    .ground-details {
+      position: absolute;
+      top: -16px;
+      width: 100%;
+      height: 24px;
+      display: flex;
+      justify-content: space-around;
+      pointer-events: none;
+    }
+
+    .flower, .bush {
+      position: relative;
+      font-size: 1.2rem;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+    }
+
+    /* 光點螢火蟲 */
+    .firefly {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: #fef08a;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #fde047, 0 0 16px #facc15;
+      animation: floatFirefly 5s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: 6;
+    }
+
+    @keyframes floatFirefly {
+      0% { transform: translateY(0) translateX(0); opacity: 0.3; }
+      50% { opacity: 0.95; }
+      100% { transform: translateY(-40px) translateX(30px); opacity: 0.2; }
+    }
+
+    /* 主卡片容器 (置中毛玻璃卡片) */
+    .content-layer {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px 20px 140px; /* 留出底部給狐狸跑動 */
+      pointer-events: none;
+    }
+
+    .card {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 34px 30px;
+      border-radius: 22px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.9);
+      max-width: 430px;
+      width: 100%;
+      text-align: center;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .card:hover {
+      transform: translateY(-3px);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #166534;
+      background-color: #dcfce7;
+      border: 1px solid #bbf7d0;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+
+    .name-title {
+      font-size: 0.9rem;
+      color: #64748b;
+      letter-spacing: 1px;
+      margin-bottom: 3px;
+    }
+
+    .student-name {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 20px;
+      letter-spacing: 1.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, #cbd5e1, transparent);
+      margin: 18px 0;
+    }
+
+    .clock-section {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 18px 16px;
+      margin-bottom: 18px;
+    }
+
+    .clock-label {
+      font-size: 0.85rem;
+      color: #475569;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .date-display {
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .time-display {
+      font-size: 2.3rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #0f372d;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .timezone-tag {
+      font-size: 0.78rem;
+      color: #64748b;
+    }
+
+    /* 互動控制區（養狐狸工具列） */
+    .fox-controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .interactive-btn {
+      appearance: none;
+      border: 1px solid #fed7aa;
+      background: #fff7ed;
+      color: #9a3412;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 7px 13px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 5px rgba(234, 88, 12, 0.08);
+    }
+    .interactive-btn:hover {
+      background: #ffedd5;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(234, 88, 12, 0.16);
+    }
+    .interactive-btn:active {
+      transform: translateY(0);
+    }
+
+    .fox-status-tip {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 12px;
+    }
+
+    /* ================================================= */
+    /* 狐狸小夥伴 (Fox Character)                        */
+    /* ================================================= */
+    .fox-entity {
+      position: absolute;
+      bottom: 60px; /* 在草地上 */
+      left: 100px;
+      width: 100px;
+      height: 75px;
+      z-index: 12;
+      cursor: pointer;
+      transform-origin: bottom center;
+      transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    }
+
+    /* 對話氣泡 / 愛心 */
+    .fox-bubble {
+      position: absolute;
+      top: -46px;
+      left: 50%;
+      transform: translateX(-50%) scale(0);
+      background: #ffffff;
+      color: #c2410c;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+      white-space: nowrap;
+      pointer-events: none;
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 20;
+    }
+    .fox-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px 6px 0;
+      border-style: solid;
+      border-color: #ffffff transparent;
+      display: block;
+      width: 0;
+    }
+    .fox-bubble.show {
+      transform: translateX(-50%) scale(1);
+    }
+
+    /* 狐狸身體結構 SVG 內部動畫 */
+    .fox-tail {
+      transform-origin: 32px 42px;
+      animation: wagTail 2.2s ease-in-out infinite alternate;
+    }
+    @keyframes wagTail {
+      0% { transform: rotate(-8deg); }
+      100% { transform: rotate(18deg); }
+    }
+
+    .fox-head {
+      transform-origin: 65px 35px;
+      animation: headBob 3s ease-in-out infinite alternate;
+    }
+    @keyframes headBob {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(-5deg); }
+    }
+
+    /* 跑動時的彈跳動畫 */
+    .fox-entity.running {
+      animation: runBob 0.32s infinite alternate ease-in-out;
+    }
+    @keyframes runBob {
+      0% { bottom: 60px; }
+      100% { bottom: 68px; }
+    }
+
+    /* 開心跳躍動畫 */
+    .fox-entity.jump {
+      animation: jumpJoy 0.6s ease-out;
+    }
+    @keyframes jumpJoy {
+      0% { transform: translateY(0) scale(1.1); }
+      50% { transform: translateY(-45px) scale(1.2) rotate(-8deg); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    /* 腳印效果 */
+    .paw-print {
+      position: absolute;
+      bottom: 68px;
+      font-size: 0.9rem;
+      opacity: 0.7;
+      pointer-events: none;
+      z-index: 4;
+      animation: fadePaw 2.5s forwards ease-out;
+    }
+    @keyframes fadePaw {
+      0% { opacity: 0.7; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.6) translateY(5px); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 森林背景世界 -->
+  <div class="forest-world" id="forestWorld">
+    <!-- 溫暖晨曦太陽 -->
+    <div class="sun"></div>
+
+    <!-- 飄動雲朵 -->
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+
+    <!-- 遠方漸層群山 -->
+    <svg class="mountains" viewBox="0 0 1440 260" preserveAspectRatio="none">
+      <path fill="#93c5fd" opacity="0.4" d="M0,180 L180,90 L360,190 L560,70 L780,210 L1020,100 L1260,180 L1440,110 L1440,260 L0,260 Z"></path>
+      <path fill="#86efac" opacity="0.35" d="M0,210 L240,130 L480,230 L720,120 L960,200 L1200,140 L1440,220 L1440,260 L0,260 Z"></path>
+    </svg>
+
+    <!-- 後排深色松樹林 -->
+    <svg class="trees-layer-back" viewBox="0 0 1440 180" preserveAspectRatio="none">
+      <path fill="#166534" d="
+        M0,180 L15,110 L30,180 L55,100 L80,180 L120,90 L160,180 
+        L210,105 L260,180 L310,85 L360,180 L420,115 L480,180 
+        L540,95 L600,180 L670,110 L740,180 L810,80 L880,180 
+        L950,110 L1020,180 L1090,95 L1160,180 L1230,115 L1300,180 
+        L1370,85 L1440,180 Z"></path>
+    </svg>
+
+    <!-- 前排中景樹林 -->
+    <svg class="trees-layer-mid" viewBox="0 0 1440 160" preserveAspectRatio="none">
+      <path fill="#15803d" d="
+        M0,160 L25,80 L50,160 L90,65 L130,160 L180,85 L230,160 
+        L290,60 L350,160 L410,75 L470,160 L530,55 L590,160 
+        L660,80 L730,160 L800,65 L870,160 L940,85 L1010,160 
+        L1080,60 L1150,160 L1220,75 L1290,160 L1360,70 L1440,160 Z"></path>
+    </svg>
+
+    <!-- 地面與草地野花 -->
+    <div class="ground" id="ground">
+      <div class="ground-details">
+        <span class="flower">🌸</span>
+        <span class="bush">🌿</span>
+        <span class="flower">🌼</span>
+        <span class="bush">🌱</span>
+        <span class="flower">🌷</span>
+        <span class="bush">🍀</span>
+        <span class="flower">🌻</span>
+        <span class="bush">🌿</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 前景作業展示卡片 (毛玻璃質感) -->
+  <main class="content-layer">
+    <div class="card">
+      <div class="badge">
+        <span>🌲</span>
+        <span>物聯網課堂作業 · 森林小天地</span>
+      </div>
+      
+      <div class="name-title">學生姓名</div>
+      <h1 class="student-name">
+        <span>陳渝媗</span>
+        <span style="font-size: 1.5rem;">🐾</span>
+      </h1>
+
+      <div class="divider"></div>
+
+      <!-- 台北時區時鐘 -->
+      <section class="clock-section">
+        <div class="clock-label">
+          <span>🕒</span>
+          <span>當前時間 (即時更新)</span>
+        </div>
+        <div class="date-display" id="dateText">載入中...</div>
+        <div class="time-display" id="timeText">--:--:--</div>
+        <div class="timezone-tag">時區：台北標準時間 (Asia/Taipei · UTC+8)</div>
+      </section>
+
+      <!-- 狐狸互動面板 -->
+      <div class="fox-controls">
+        <button class="interactive-btn" id="feedBtn">
+          <span>🫐</span> 餵藍莓
+        </button>
+        <button class="interactive-btn" id="petBtn">
+          <span>✨</span> 摸摸狐狸
+        </button>
+        <button class="interactive-btn" id="callBtn">
+          <span>📣</span> 叫牠過來
+        </button>
+      </div>
+
+      <div class="fox-status-tip" id="statusTip">
+        💡 點擊背景小狐狸或按鈕，看看牠的反應吧！
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================= -->
+  <!-- 森林小狐狸本體 (SVG 向量手繪風格)                -->
+  <!-- ============================================= -->
+  <div class="fox-entity" id="fox" title="點我摸摸！">
+    <div class="fox-bubble" id="foxBubble">嗷嗚～❤️</div>
+
+    <svg viewBox="0 0 100 75" width="100" height="75">
+      <!-- 蓬鬆大尾巴 (帶白尾巴尖) -->
+      <g class="fox-tail">
+        <path d="M 32 46 C 18 48 5 36 2 24 C 0 14 10 8 18 12 C 28 17 38 32 38 45 Z" fill="#f97316"/>
+        <path d="M 12 10 C 8 12 4 16 2 24 C 5 22 10 21 16 18 Z" fill="#ffffff"/>
+      </g>
+
+      <!-- 後腿 -->
+      <ellipse cx="36" cy="56" rx="8" ry="12" fill="#ea580c"/>
+      <ellipse cx="34" cy="67" rx="5" ry="3" fill="#334155"/>
+
+      <!-- 圓滾滾身體 -->
+      <ellipse cx="50" cy="48" rx="20" ry="16" fill="#f97316"/>
+      <!-- 胸前白毛 -->
+      <path d="M 52 42 C 48 48 50 58 60 54 C 64 48 62 40 56 38 Z" fill="#ffffff"/>
+
+      <!-- 前腿 -->
+      <rect x="58" y="52" width="6" height="15" rx="3" fill="#ea580c"/>
+      <ellipse cx="61" cy="67" rx="4" ry="2.5" fill="#334155"/>
+
+      <rect x="46" y="52" width="5" height="15" rx="2.5" fill="#ea580c"/>
+      <ellipse cx="48.5" cy="67" rx="3.5" ry="2.5" fill="#334155"/>
+
+      <!-- 狐狸頭部 (帶動畫) -->
+      <g class="fox-head">
+        <!-- 耳朵 -->
+        <polygon points="62,18 72,2 78,22" fill="#ea580c"/>
+        <polygon points="65,17 71,6 75,20" fill="#fed7aa"/>
+        <polygon points="72,2 75,8 70,8" fill="#1e293b"/> <!-- 耳尖黑毛 -->
+
+        <polygon points="74,19 84,4 89,24" fill="#f97316"/>
+        <polygon points="77,18 83,8 86,22" fill="#fed7aa"/>
+        <polygon points="84,4 87,9 82,9" fill="#1e293b"/>
+
+        <!-- 臉部輪廓 -->
+        <polygon points="62,24 88,24 96,38 64,42" fill="#f97316"/>
+        <!-- 兩頰白毛 -->
+        <polygon points="72,32 94,37 78,43" fill="#ffffff"/>
+        <!-- 黑色鼻頭 -->
+        <circle cx="95" cy="37" r="2.5" fill="#0f172a"/>
+        <!-- 瞇瞇眼 (可愛親切微笑) -->
+        <path d="M 77 28 Q 81 24 85 28" stroke="#0f172a" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <!-- 腮紅 -->
+        <ellipse cx="80" cy="34" rx="3" ry="2" fill="#f43f5e" opacity="0.6"/>
+      </g>
+    </svg>
+  </div>
+
+  <script>
+    /* ======================================================== */
+    /* 1. 台北時區時鐘                                          */
+    /* ======================================================== */
+    function updateTaipeiTime() {
+      const now = new Date();
+
+      const dateOptions = {
+        timeZone: 'Asia/Taipei',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'long'
+      };
+
+      const timeOptions = {
+        timeZone: 'Asia/Taipei',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      };
+
+      const dateString = new Intl.DateTimeFormat('zh-TW', dateOptions).format(now);
+      const timeString = new Intl.DateTimeFormat('zh-TW', timeOptions).format(now);
+
+      document.getElementById('dateText').textContent = dateString;
+      document.getElementById('timeText').textContent = timeString;
+    }
+
+    updateTaipeiTime();
+    setInterval(updateTaipeiTime, 1000);
+
+    /* ======================================================== */
+    /* 2. 螢火蟲產生器                                          */
+    /* ======================================================== */
+    const forest = document.getElementById('forestWorld');
+    for (let i = 0; i < 15; i++) {
+      const ff = document.createElement('div');
+      ff.className = 'firefly';
+      ff.style.left = Math.random() * 95 + '%';
+      ff.style.top = (45 + Math.random() * 45) + '%';
+      ff.style.animationDelay = (Math.random() * 5) + 's';
+      ff.style.animationDuration = (3.5 + Math.random() * 4) + 's';
+      forest.appendChild(ff);
+    }
+
+    /* ======================================================== */
+    /* 3. 養狐狸行為系統 (奔跑、散步、互動、對話)                 */
+    /* ======================================================== */
+    const fox = document.getElementById('fox');
+    const bubble = document.getElementById('foxBubble');
+    const statusTip = document.getElementById('statusTip');
+
+    let posX = 120;
+    let targetX = 250;
+    let speed = 2.4;
+    let isMoving = false;
+    let bubbleTimer = null;
+
+    // 氣泡說話
+    function foxSay(text, duration = 2200) {
+      bubble.textContent = text;
+      bubble.classList.add('show');
+      if (bubbleTimer) clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => {
+        bubble.classList.remove('show');
+      }, duration);
+    }
+
+    // 留下小腳印
+    function leavePawPrint(x, direction) {
+      const paw = document.createElement('div');
+      paw.className = 'paw-print';
+      paw.textContent = '🐾';
+      paw.style.left = (x + (direction > 0 ? 15 : 65)) + 'px';
+      document.body.appendChild(paw);
+      setTimeout(() => paw.remove(), 2400);
+    }
+
+    let pawCounter = 0;
+
+    // 狐狸移動與漫遊邏輯
+    function wanderLoop() {
+      const windowWidth = window.innerWidth;
+      const minX = 40;
+      const maxX = windowWidth - 140;
+
+      if (!isMoving) {
+        // 隨機發呆 1.5 ~ 4 秒後前往下一個目的地
+        const waitTime = 1500 + Math.random() * 2500;
+        setTimeout(() => {
+          targetX = minX + Math.random() * (maxX - minX);
+          isMoving = true;
+          fox.classList.add('running');
+          wanderLoop();
+        }, waitTime);
+        return;
+      }
+
+      const dx = targetX - posX;
+      const distance = Math.abs(dx);
+
+      if (distance < 4) {
+        // 到達目的地
+        posX = targetX;
+        isMoving = false;
+        fox.classList.remove('running');
+
+        // 偶爾自言自語
+        if (Math.random() < 0.3) {
+          const quotes = ['嗷嗚～', '風吹來好舒服 🍃', '森林裡好多花花 🌸', '渝媗作業加油！✨', '吸吸～聞到青草香'];
+          foxSay(quotes[Math.floor(Math.random() * quotes.length)]);
+        }
+
+        wanderLoop();
+        return;
+      }
+
+      // 移動步長
+      const dir = dx > 0 ? 1 : -1;
+      // 轉向 (翻轉 SVG)
+      fox.style.transform = dir > 0 ? 'scaleX(1)' : 'scaleX(-1)';
+
+      posX += dir * Math.min(speed, distance);
+      fox.style.left = posX + 'px';
+
+      // 產生小腳印
+      pawCounter++;
+      if (pawCounter % 14 === 0) {
+        leavePawPrint(posX, dir);
+      }
+
+      requestAnimationFrame(wanderLoop);
+    }
+
+    // 啟動自主散步
+    wanderLoop();
+
+    // 狐狸跳躍動作
+    function foxJump() {
+      fox.classList.add('jump');
+      setTimeout(() => fox.classList.remove('jump'), 600);
+    }
+
+    /* 互動事件 */
+    // 1. 點擊狐狸本體
+    fox.addEventListener('click', (e) => {
+      e.stopPropagation();
+      foxJump();
+      const pats = ['蹭蹭～❤️', '最喜歡被摸頭了！', '嗷嗚嗚 (開心轉圈)', '💖 渝媗好溫柔～'];
+      const msg = pats[Math.floor(Math.random() * pats.length)];
+      foxSay(msg);
+      statusTip.textContent = '✨ 小狐狸很開心地對你蹭了蹭！';
+    });
+
+    // 2. 餵食藍莓
+    document.getElementById('feedBtn').addEventListener('click', () => {
+      foxJump();
+      foxSay('嚼嚼嚼... 🫐 藍莓好好吃！嗷嗚～', 2600);
+      statusTip.textContent = '🫐 狐狸吃飽了，精力充沛地搖著尾巴！';
+    });
+
+    // 3. 摸摸狐狸按鈕
+    document.getElementById('petBtn').addEventListener('click', () => {
+      foxJump();
+      foxSay('呼嚕嚕～好舒服呀 💕', 2400);
+      statusTip.textContent = '🦊 小狐狸閉上眼睛享受摸摸！';
+    });
+
+    // 4. 呼喚狐狸過來
+    document.getElementById('callBtn').addEventListener('click', () => {
+      // 跑向畫面中央正下方 (卡片底下)
+      targetX = (window.innerWidth / 2) - 50;
+      isMoving = true;
+      fox.classList.add('running');
+      foxSay('來啦來啦！奔跑中 💨', 2000);
+      statusTip.textContent = '🐾 小狐狸聽到呼喚，正快步跑過來！';
+    });
+
+    // 5. 點擊地面任意處，狐狸跑去該處查看
+    document.getElementById('ground').addEventListener('click', (e) => {
+      targetX = Math.max(30, Math.min(window.innerWidth - 130, e.clientX - 50));
+      isMoving = true;
+      fox.classList.add('running');
+      foxSay('探險出發！🐾', 1500);
+      statusTip.textContent = '🔎 小狐狸正跑過去查看新地點！';
+    });
+
+    // 視窗大小改變時校正邊界
+    window.addEventListener('resize', () => {
+      const maxX = window.innerWidth - 140;
+      if (posX > maxX) {
+        posX = maxX;
+        fox.style.left = posX + 'px';
+      }
+    });
+  </script>
+
+</body>
+</html>
